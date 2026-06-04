@@ -10,6 +10,7 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import { cmdSetup } from "./setup.mjs";
 
 const C = {
@@ -46,9 +47,18 @@ function loadConfig(flags) {
       /* ignore malformed config */
     }
   }
+  let creds = {};
+  const credPath = path.join(os.homedir(), ".wovo", "config.json");
+  if (existsSync(credPath)) {
+    try {
+      creds = JSON.parse(readFileSync(credPath, "utf8"));
+    } catch {
+      /* ignore malformed creds */
+    }
+  }
   const cfg = {
-    url: flags.url || process.env.WOVO_URL || file.url || "https://wovo.dev",
-    token: flags.token || process.env.WOVO_TOKEN || file.token || "",
+    url: flags.url || process.env.WOVO_URL || file.url || creds.url || "https://wovo.dev",
+    token: flags.token || process.env.WOVO_TOKEN || file.token || creds.token || "",
     workspace: flags.workspace || process.env.WOVO_WORKSPACE || file.workspace || "default",
     space: flags.space || file.space || "",
     tool: flags.tool || file.tool || "cli",

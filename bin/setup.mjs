@@ -7,6 +7,7 @@ import { writeFile, mkdir, readFile, appendFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { execSync } from "node:child_process";
 import path from "node:path";
+import { login } from "./login.mjs";
 
 const C = {
   dim: (s) => `\x1b[2m${s}\x1b[0m`,
@@ -121,9 +122,17 @@ async function testDeploy(cfg) {
 }
 
 export async function cmdSetup(cfg, flags) {
+  // No token? Sign in via the browser (no secret to copy). --token stays the
+  // CI/headless escape hatch.
   if (!cfg.token) {
-    console.error(C.red("✗ No deploy token. Run with --token <token> or set WOVO_TOKEN."));
-    process.exit(1);
+    try {
+      const { token, url } = await login(cfg);
+      cfg.token = token;
+      cfg.url = (url || cfg.url).replace(/\/$/, "");
+    } catch (e) {
+      console.error(C.red(`✗ ${e.message}`));
+      process.exit(1);
+    }
   }
   const tool = flags.tool || detectTool();
   const did = [];
