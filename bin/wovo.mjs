@@ -10,6 +10,7 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { cmdSetup } from "./setup.mjs";
 
 const C = {
   dim: (s) => `\x1b[2m${s}\x1b[0m`,
@@ -156,6 +157,7 @@ function help() {
   console.log(`${C.accent("≋ wovo")} — the library for everything your agents build
 
 ${C.bold("Usage")}
+  wovo setup               Connect this project's AI tool to Wovo (skill + token + test)
   wovo deploy <file|dir>   Deploy one HTML file, or every .html under a folder
   wovo list                List pages in the workspace
 
@@ -180,6 +182,7 @@ async function main() {
   const cfg = loadConfig(flags);
 
   if (!cmd || cmd === "help" || flags.help) return help();
+  if (cmd === "setup") return cmdSetup(cfg, flags);
   if (cmd === "deploy") return cmdDeploy(flags._[1], cfg, flags);
   if (cmd === "list") return cmdList(cfg);
   console.error(C.red(`Unknown command: ${cmd}`));
