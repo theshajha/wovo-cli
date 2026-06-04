@@ -1,0 +1,48 @@
+{
+  "name": "wovo",
+  "version": "0.1.0",
+  "description": "Deploy any HTML from any AI tool or terminal to a versioned, shareable library — CLI + MCP server for wovo.dev.",
+  "keywords": [
+    "wovo",
+    "cli",
+    "deploy",
+    "html",
+    "static-site",
+    "ai",
+    "agents",
+    "mcp",
+    "model-context-protocol",
+    "claude"
+  ],
+  "homepage": "https://wovo.dev",
+  "bugs": {
+    "url": "https://github.com/theshajha/wovo-cli/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/theshajha/wovo-cli.git"
+  },
+  "license": "MIT",
+  "author": "Shashank Jha (https://github.com/theshajha)",
+  "type": "module",
+  "bin": {
+    "wovo": "bin/wovo.mjs",
+    "wovo-mcp": "bin/wovo-mcp.mjs"
+  },
+  "files": [
+    "bin",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.25.76"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}
