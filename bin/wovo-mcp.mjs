@@ -34,6 +34,10 @@ server.tool(
     slug: z.string().optional().describe("Stable slug for the page (else derived from title)."),
     workspace: z.string().optional().describe("Workspace (defaults to WOVO_WORKSPACE)."),
     tool: z.string().optional().describe("Source-tool tag (default 'claude-code')."),
+    access: z
+      .enum(["private", "team", "public", "password"])
+      .optional()
+      .describe("Page visibility. Defaults to 'private' for agent deploys — only the workspace owner can view it. Use 'public' only when the user explicitly wants a shareable link."),
   },
   async (args) => {
     if (!TOKEN) return errText("WOVO_TOKEN is not set on the MCP server environment.");
@@ -56,6 +60,7 @@ server.tool(
         title: args.title,
         space: args.space,
         sourceTool: args.tool || "claude-code",
+        access: { level: args.access || "private" },
         html,
       }),
     });
