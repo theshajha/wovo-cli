@@ -85,10 +85,12 @@ function deriveMeta(absPath, baseDir, cfg, flags) {
 async function deployOne(cfg, file, flags) {
   const html = await readFile(file.abs, "utf8");
   const { slug, space } = deriveMeta(file.abs, file.base, cfg, flags);
+  const body = { workspace: cfg.workspace, slug, space, sourceTool: cfg.tool, html };
+  if (flags.access) body.access = { level: flags.access };
   const res = await fetch(`${cfg.url}/api/deploy`, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${cfg.token}` },
-    body: JSON.stringify({ workspace: cfg.workspace, slug, space, sourceTool: cfg.tool, html }),
+    body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.ok) {
@@ -162,6 +164,7 @@ ${C.bold("Options")}
   --space S                Group pages under a space (default: top folder name)
   --tool T                 Source tool tag (default: "cli")
   --slug S                 Explicit slug (single-file deploys)
+  --access LEVEL           private | team | public | password (default: public-by-link)
   --url U                  Wovo base URL (default: env WOVO_URL or https://wovo.dev)
   --token T                Deploy token (default: env WOVO_TOKEN)
 
