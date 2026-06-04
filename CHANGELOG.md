@@ -6,6 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/) and the
 
 ## [Unreleased]
 
+## [0.1.3]
+
+### Added
+
+- **Browser sign-in.** `wovo setup` with no `--token` opens the browser to
+  authorize (loopback flow); the deploy token is handed back via a one-shot
+  `127.0.0.1` callback and stored in `~/.wovo` — nothing to copy. `--token` (and
+  `WOVO_TOKEN`) remain for CI/headless. `deploy`/`list` reuse the stored session.
+
 ## [0.1.2]
 
 ### Added
