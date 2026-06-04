@@ -6,6 +6,17 @@ adheres to [Semantic Versioning](https://semver.org/) and the
 
 ## [Unreleased]
 
+## [0.1.2]
+
+### Added
+
+- `wovo setup [--tool <claude-code|cursor|other>]` — one command that connects
+  the current project's AI tool to Wovo: writes a tool-native durable instruction
+  (Claude Code skill / Cursor rule / `AGENTS.md`) so the agent auto-publishes
+  finished HTML to your library, wires the deploy token, and publishes a private
+  test page. Secrets written to the project (`.mcp.json` / `.cursor/mcp.json` /
+  `wovo.json`) are gitignored automatically.
+
 ## [0.1.1]
 
 ### Added
