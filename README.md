@@ -6,17 +6,17 @@ Every deploy snapshots a new version, returns a live URL, and files the page in 
 
 ## Install
 
-No install needed — run it with `npx`:
+Install globally, then use the `wovo` command:
 
 ```bash
-npx wovo deploy ./report.html
+npm i -g @wovo/cli
+wovo deploy ./report.html
 ```
 
-Or install globally:
+Or run it one-off with `npx`:
 
 ```bash
-npm i -g wovo
-wovo deploy ./report.html
+npx -p @wovo/cli wovo deploy ./report.html
 ```
 
 ## Authenticate
@@ -67,7 +67,7 @@ wovo list --workspace acme
 claude mcp add wovo \
   --env WOVO_TOKEN=wv_… \
   --env WOVO_WORKSPACE=my-workspace \
-  -- npx -y wovo-mcp
+  -- npx -y -p @wovo/cli wovo-mcp
 ```
 
 Tools: `wovo_deploy` (inline `html` or a file `path`) and `wovo_list`.
