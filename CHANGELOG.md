@@ -6,6 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/) and the
 
 ## [Unreleased]
 
+## [0.1.1]
+
+### Added
+
+- `wovo_deploy` (MCP) `access` option — defaults to `private` for agent deploys
+  (the ambient auto-save path is private unless asked otherwise).
+- CLI `--access <private|team|public|password>` flag; the bare default is
+  unchanged (a public, link-viewable page).
+
 ## [0.1.0] — unreleased
 
 Initial public release of the `wovo` CLI + MCP server.
