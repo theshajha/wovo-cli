@@ -6,6 +6,17 @@ adheres to [Semantic Versioning](https://semver.org/) and the
 
 ## [Unreleased]
 
+## [0.1.4]
+
+### Fixed
+
+- **`list` sends the deploy token.** `wovo list` and the MCP `wovo_list` now
+  authenticate with `Authorization: Bearer <token>`. wovo.dev's `/api/pages`
+  is access-filtered: the workspace's own token sees every page, while
+  unauthenticated callers get the anonymous view (private workspaces 403,
+  owner-only/team pages hidden). Older versions can still list public
+  workspaces but will see a 403 on private ones — upgrade.
+
 ## [0.1.3]
 
 ### Added

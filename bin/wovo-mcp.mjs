@@ -85,7 +85,12 @@ server.tool(
   { workspace: z.string().optional().describe("Workspace (defaults to WOVO_WORKSPACE).") },
   async (args) => {
     const ws = args.workspace || DEFAULT_WS;
-    const res = await fetch(`${URL_BASE}/api/pages?workspace=${encodeURIComponent(ws)}`);
+    // The token authenticates the listing: the workspace's own token sees every
+    // page; without it the API returns only the anonymous view (and 403s
+    // private workspaces).
+    const res = await fetch(`${URL_BASE}/api/pages?workspace=${encodeURIComponent(ws)}`, {
+      headers: TOKEN ? { authorization: `Bearer ${TOKEN}` } : {},
+    });
     const data = await res.json().catch(() => ({}));
     if (!data.ok) return errText(data.error || `HTTP ${res.status}`);
     const lines = data.pages

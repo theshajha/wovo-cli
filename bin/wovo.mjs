@@ -151,7 +151,11 @@ async function cmdDeploy(target, cfg, flags) {
 }
 
 async function cmdList(cfg) {
-  const res = await fetch(`${cfg.url}/api/pages?workspace=${encodeURIComponent(cfg.workspace)}`);
+  // Token-authenticated: the workspace's own token sees every page; without it
+  // the API returns only the anonymous view (and 403s private workspaces).
+  const res = await fetch(`${cfg.url}/api/pages?workspace=${encodeURIComponent(cfg.workspace)}`, {
+    headers: cfg.token ? { authorization: `Bearer ${cfg.token}` } : {},
+  });
   const data = await res.json().catch(() => ({}));
   if (!data.ok) {
     console.error(C.red(`✗ ${data.error || "Failed to list pages."}`));
