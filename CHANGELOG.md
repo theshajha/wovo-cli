@@ -6,6 +6,16 @@ adheres to [Semantic Versioning](https://semver.org/) and the
 
 ## [Unreleased]
 
+## [0.1.5]
+
+### Added
+
+- **`wovo domains`** — manage custom domains against wovo.dev's `/api/domains`:
+  `list`, `add <domain> --page <slug>`, `remove <domain>`, `status <domain>`.
+  `add` prints DNS instructions (A/CNAME + TXT verification when needed).
+- MCP tools: `wovo_domains_list`, `wovo_domains_add`, `wovo_domains_remove`,
+  `wovo_domains_status`.
+
 ## [0.1.4]
 
 ### Fixed

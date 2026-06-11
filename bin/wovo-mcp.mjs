@@ -102,6 +102,116 @@ server.tool(
   }
 );
 
+server.tool(
+  "wovo_domains_list",
+  "List custom domains linked to the Wovo workspace.",
+  { workspace: z.string().optional().describe("Workspace (defaults to WOVO_WORKSPACE).") },
+  async (args) => {
+    if (!TOKEN) return errText("WOVO_TOKEN is not set on the MCP server environment.");
+    const ws = args.workspace || DEFAULT_WS;
+    const res = await fetch(`${URL_BASE}/api/domains?workspace=${encodeURIComponent(ws)}`, {
+      headers: { authorization: `Bearer ${TOKEN}` },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) return errText(data.error || `HTTP ${res.status}`);
+    const lines = data.domains
+      .map((d) => `• ${d.domain} (${d.status}) → ${d.slug}`)
+      .join("\n");
+    return {
+      content: [{ type: "text", text: `${data.count} domain(s) in "${ws}":\n${lines || "(none)"}` }],
+    };
+  }
+);
+
+server.tool(
+  "wovo_domains_add",
+  "Link a custom domain to a public page. Returns DNS setup instructions.",
+  {
+    domain: z.string().describe("Domain to link, e.g. report.acme.com"),
+    page: z.string().describe("Slug of the public page to serve at the domain root."),
+    workspace: z.string().optional().describe("Workspace (defaults to WOVO_WORKSPACE)."),
+  },
+  async (args) => {
+    if (!TOKEN) return errText("WOVO_TOKEN is not set on the MCP server environment.");
+    const ws = args.workspace || DEFAULT_WS;
+    const res = await fetch(`${URL_BASE}/api/domains`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${TOKEN}` },
+      body: JSON.stringify({ workspace: ws, domain: args.domain, slug: args.page }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) return errText(data.error || `HTTP ${res.status}`);
+    const dns = (data.dns || [])
+      .map((r) => `${r.type} ${r.name} → ${r.value}`)
+      .join("\n");
+    const txt = (data.verification || [])
+      .map((v) => `${v.type} ${v.domain} → ${v.value}`)
+      .join("\n");
+    return {
+      content: [
+        {
+          type: "text",
+          text:
+            `✓ Linked ${data.link.domain} → ${data.link.slug} (${data.link.status})\n` +
+            (dns ? `\nDNS:\n${dns}` : "") +
+            (txt ? `\n\nVerification:\n${txt}` : ""),
+        },
+      ],
+    };
+  }
+);
+
+server.tool(
+  "wovo_domains_remove",
+  "Unlink a custom domain from the workspace.",
+  {
+    domain: z.string().describe("Domain to unlink."),
+    workspace: z.string().optional().describe("Workspace (defaults to WOVO_WORKSPACE)."),
+  },
+  async (args) => {
+    if (!TOKEN) return errText("WOVO_TOKEN is not set on the MCP server environment.");
+    const ws = args.workspace || DEFAULT_WS;
+    const res = await fetch(
+      `${URL_BASE}/api/domains?workspace=${encodeURIComponent(ws)}&domain=${encodeURIComponent(args.domain)}`,
+      { method: "DELETE", headers: { authorization: `Bearer ${TOKEN}` } }
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) return errText(data.error || `HTTP ${res.status}`);
+    return { content: [{ type: "text", text: `✓ Unlinked ${args.domain}` }] };
+  }
+);
+
+server.tool(
+  "wovo_domains_status",
+  "Refresh a domain's DNS/verification status and return setup instructions.",
+  {
+    domain: z.string().describe("Domain to check."),
+    workspace: z.string().optional().describe("Workspace (defaults to WOVO_WORKSPACE)."),
+  },
+  async (args) => {
+    if (!TOKEN) return errText("WOVO_TOKEN is not set on the MCP server environment.");
+    const ws = args.workspace || DEFAULT_WS;
+    const res = await fetch(`${URL_BASE}/api/domains/refresh`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${TOKEN}` },
+      body: JSON.stringify({ workspace: ws, domain: args.domain }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) return errText(data.error || `HTTP ${res.status}`);
+    const dns = (data.dns || [])
+      .map((r) => `${r.type} ${r.name} → ${r.value}`)
+      .join("\n");
+    return {
+      content: [
+        {
+          type: "text",
+          text: `${args.domain}: ${data.link.status} → ${data.link.slug}` + (dns ? `\n\nDNS:\n${dns}` : ""),
+        },
+      ],
+    };
+  }
+);
+
 function errText(msg) {
   return { isError: true, content: [{ type: "text", text: `✗ ${msg}` }] };
 }

@@ -167,6 +167,113 @@ async function cmdList(cfg) {
   }
 }
 
+async function domainsFetch(cfg, path, init = {}) {
+  if (!cfg.token) {
+    console.error(C.red("✗ No deploy token. Set WOVO_TOKEN (env), wovo.json, or --token."));
+    process.exit(1);
+  }
+  const res = await fetch(`${cfg.url}${path}`, {
+    ...init,
+    headers: {
+      authorization: `Bearer ${cfg.token}`,
+      ...(init.headers || {}),
+    },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
+  return data;
+}
+
+function printDns(dns, verification) {
+  if (dns?.length) {
+    console.log(C.bold("\nDNS — add at your provider:"));
+    for (const r of dns) {
+      console.log(`  ${C.dim("Type")}  ${r.type}`);
+      console.log(`  ${C.dim("Name")}  ${r.name}`);
+      console.log(`  ${C.dim("Value")} ${r.value}\n`);
+    }
+  }
+  if (verification?.length) {
+    console.log(C.bold("Ownership verification (if prompted):"));
+    for (const v of verification) {
+      console.log(`  ${v.type}  ${v.domain}`);
+      console.log(`  ${v.value}\n`);
+    }
+  }
+}
+
+async function cmdDomainsList(cfg) {
+  const data = await domainsFetch(cfg, `/api/domains?workspace=${encodeURIComponent(cfg.workspace)}`);
+  console.log(C.bold(`${data.count} domain(s) in ${data.workspace}\n`));
+  for (const d of data.domains) {
+    console.log(
+      `  ${C.accent(d.domain.padEnd(36))} ${C.dim(d.status.padEnd(14))} → ${d.slug}`
+    );
+  }
+}
+
+async function cmdDomainsAdd(cfg, domain, flags) {
+  const slug = flags.page;
+  if (!domain || !slug) {
+    console.error(C.red("✗ Usage: wovo domains add <domain> --page <slug>"));
+    process.exit(1);
+  }
+  const data = await domainsFetch(cfg, "/api/domains", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ workspace: cfg.workspace, domain, slug }),
+  });
+  console.log(C.green(`✓ Linked ${data.link.domain} → ${data.link.slug} (${data.link.status})`));
+  printDns(data.dns, data.verification);
+}
+
+async function cmdDomainsRemove(cfg, domain) {
+  if (!domain) {
+    console.error(C.red("✗ Usage: wovo domains remove <domain>"));
+    process.exit(1);
+  }
+  await domainsFetch(
+    cfg,
+    `/api/domains?workspace=${encodeURIComponent(cfg.workspace)}&domain=${encodeURIComponent(domain)}`,
+    { method: "DELETE" }
+  );
+  console.log(C.green(`✓ Unlinked ${domain}`));
+}
+
+async function cmdDomainsStatus(cfg, domain) {
+  if (!domain) {
+    console.error(C.red("✗ Usage: wovo domains status <domain>"));
+    process.exit(1);
+  }
+  const data = await domainsFetch(cfg, "/api/domains/refresh", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ workspace: cfg.workspace, domain }),
+  });
+  console.log(`${C.bold(domain)}  ${C.dim(data.link.status)}  → ${data.link.slug}`);
+  printDns(data.dns, data.verification);
+}
+
+async function cmdDomains(sub, cfg, flags, rest) {
+  if (!sub || sub === "help") {
+    console.log(`${C.bold("wovo domains")}
+  list                         List linked domains
+  add <domain> --page <slug>   Link a domain to a public page
+  remove <domain>              Unlink a domain
+  status <domain>              Refresh and show DNS / verification status
+`);
+    return;
+  }
+  if (sub === "list") return cmdDomainsList(cfg);
+  if (sub === "add") return cmdDomainsAdd(cfg, rest[0], flags);
+  if (sub === "remove") return cmdDomainsRemove(cfg, rest[0]);
+  if (sub === "status") return cmdDomainsStatus(cfg, rest[0]);
+  console.error(C.red(`Unknown domains command: ${sub}`));
+  process.exit(1);
+}
+
 function help() {
   console.log(`${C.accent("≋ wovo")} — the library for everything your agents build
 
@@ -174,12 +281,14 @@ ${C.bold("Usage")}
   wovo setup               Connect this project's AI tool to Wovo (skill + token + test)
   wovo deploy <file|dir>   Deploy one HTML file, or every .html under a folder
   wovo list                List pages in the workspace
+  wovo domains             Manage custom domains (list, add, remove, status)
 
 ${C.bold("Options")}
   --workspace W            Target workspace (default: env WOVO_WORKSPACE or "default")
   --space S                Group pages under a space (default: top folder name)
   --tool T                 Source tool tag (default: "cli")
   --slug S                 Explicit slug (single-file deploys)
+  --page S                 Target page slug (domains add)
   --access LEVEL           private | team | public | password (default: public-by-link)
   --url U                  Wovo base URL (default: env WOVO_URL or https://wovo.dev)
   --token T                Deploy token (default: env WOVO_TOKEN)
@@ -199,6 +308,7 @@ async function main() {
   if (cmd === "setup") return cmdSetup(cfg, flags);
   if (cmd === "deploy") return cmdDeploy(flags._[1], cfg, flags);
   if (cmd === "list") return cmdList(cfg);
+  if (cmd === "domains") return cmdDomains(flags._[1], cfg, flags, flags._.slice(2));
   console.error(C.red(`Unknown command: ${cmd}`));
   help();
   process.exit(1);
