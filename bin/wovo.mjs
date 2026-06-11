@@ -256,6 +256,67 @@ async function cmdDomainsStatus(cfg, domain) {
   printDns(data.dns, data.verification);
 }
 
+async function pagesMutate(cfg, body) {
+  if (!cfg.token) {
+    console.error(C.red("✗ No deploy token. Set WOVO_TOKEN (env), wovo.json, or --token."));
+    process.exit(1);
+  }
+  const res = await fetch(`${cfg.url}/api/pages`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json", authorization: `Bearer ${cfg.token}` },
+    body: JSON.stringify({ workspace: cfg.workspace, ...body }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
+  return data;
+}
+
+async function cmdPagesArchive(cfg, slug) {
+  if (!slug) {
+    console.error(C.red("✗ Usage: wovo pages archive <slug>"));
+    process.exit(1);
+  }
+  const data = await pagesMutate(cfg, { slug, action: "archive" });
+  console.log(C.green(`✓ Archived ${data.page.slug}`));
+}
+
+async function cmdPagesUnarchive(cfg, slug) {
+  if (!slug) {
+    console.error(C.red("✗ Usage: wovo pages unarchive <slug>"));
+    process.exit(1);
+  }
+  const data = await pagesMutate(cfg, { slug, action: "unarchive" });
+  console.log(C.green(`✓ Unarchived ${data.page.slug}`));
+}
+
+async function cmdPagesMove(cfg, slug, flags) {
+  const space = flags.space;
+  if (!slug || !space) {
+    console.error(C.red("✗ Usage: wovo pages move <slug> --space <name>"));
+    process.exit(1);
+  }
+  const data = await pagesMutate(cfg, { slug, action: "move", space });
+  console.log(C.green(`✓ Moved ${data.page.slug} → space "${data.page.space}"`));
+}
+
+async function cmdPages(sub, cfg, flags, rest) {
+  if (!sub || sub === "help") {
+    console.log(`${C.bold("wovo pages")}
+  archive <slug>           Hide a page from the library (link still works)
+  unarchive <slug>         Restore an archived page to the library
+  move <slug> --space S    Change a page's space
+`);
+    return;
+  }
+  if (sub === "archive") return cmdPagesArchive(cfg, rest[0]);
+  if (sub === "unarchive") return cmdPagesUnarchive(cfg, rest[0]);
+  if (sub === "move") return cmdPagesMove(cfg, rest[0], flags);
+  console.error(C.red(`Unknown pages command: ${sub}`));
+  process.exit(1);
+}
+
 async function cmdDomains(sub, cfg, flags, rest) {
   if (!sub || sub === "help") {
     console.log(`${C.bold("wovo domains")}
@@ -281,6 +342,7 @@ ${C.bold("Usage")}
   wovo setup               Connect this project's AI tool to Wovo (skill + token + test)
   wovo deploy <file|dir>   Deploy one HTML file, or every .html under a folder
   wovo list                List pages in the workspace
+  wovo pages               Archive, unarchive, or move pages
   wovo domains             Manage custom domains (list, add, remove, status)
 
 ${C.bold("Options")}
@@ -308,6 +370,7 @@ async function main() {
   if (cmd === "setup") return cmdSetup(cfg, flags);
   if (cmd === "deploy") return cmdDeploy(flags._[1], cfg, flags);
   if (cmd === "list") return cmdList(cfg);
+  if (cmd === "pages") return cmdPages(flags._[1], cfg, flags, flags._.slice(2));
   if (cmd === "domains") return cmdDomains(flags._[1], cfg, flags, flags._.slice(2));
   console.error(C.red(`Unknown command: ${cmd}`));
   help();

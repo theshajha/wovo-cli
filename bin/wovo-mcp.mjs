@@ -103,6 +103,72 @@ server.tool(
 );
 
 server.tool(
+  "wovo_pages_archive",
+  "Archive a page — hidden from the default library, but its /p link still works.",
+  {
+    slug: z.string().describe("Page slug to archive."),
+    workspace: z.string().optional().describe("Workspace (defaults to WOVO_WORKSPACE)."),
+  },
+  async (args) => {
+    if (!TOKEN) return errText("WOVO_TOKEN is not set on the MCP server environment.");
+    const ws = args.workspace || DEFAULT_WS;
+    const res = await fetch(`${URL_BASE}/api/pages`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", authorization: `Bearer ${TOKEN}` },
+      body: JSON.stringify({ workspace: ws, slug: args.slug, action: "archive" }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) return errText(data.error || `HTTP ${res.status}`);
+    return { content: [{ type: "text", text: `✓ Archived "${args.slug}" in "${ws}".` }] };
+  }
+);
+
+server.tool(
+  "wovo_pages_unarchive",
+  "Restore an archived page to the active library.",
+  {
+    slug: z.string().describe("Page slug to unarchive."),
+    workspace: z.string().optional().describe("Workspace (defaults to WOVO_WORKSPACE)."),
+  },
+  async (args) => {
+    if (!TOKEN) return errText("WOVO_TOKEN is not set on the MCP server environment.");
+    const ws = args.workspace || DEFAULT_WS;
+    const res = await fetch(`${URL_BASE}/api/pages`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", authorization: `Bearer ${TOKEN}` },
+      body: JSON.stringify({ workspace: ws, slug: args.slug, action: "unarchive" }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) return errText(data.error || `HTTP ${res.status}`);
+    return { content: [{ type: "text", text: `✓ Unarchived "${args.slug}" in "${ws}".` }] };
+  }
+);
+
+server.tool(
+  "wovo_pages_move",
+  "Change a page's space (group) in the library.",
+  {
+    slug: z.string().describe("Page slug to move."),
+    space: z.string().describe("Target space name."),
+    workspace: z.string().optional().describe("Workspace (defaults to WOVO_WORKSPACE)."),
+  },
+  async (args) => {
+    if (!TOKEN) return errText("WOVO_TOKEN is not set on the MCP server environment.");
+    const ws = args.workspace || DEFAULT_WS;
+    const res = await fetch(`${URL_BASE}/api/pages`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", authorization: `Bearer ${TOKEN}` },
+      body: JSON.stringify({ workspace: ws, slug: args.slug, action: "move", space: args.space }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) return errText(data.error || `HTTP ${res.status}`);
+    return {
+      content: [{ type: "text", text: `✓ Moved "${args.slug}" to space "${data.page.space}" in "${ws}".` }],
+    };
+  }
+);
+
+server.tool(
   "wovo_domains_list",
   "List custom domains linked to the Wovo workspace.",
   { workspace: z.string().optional().describe("Workspace (defaults to WOVO_WORKSPACE).") },

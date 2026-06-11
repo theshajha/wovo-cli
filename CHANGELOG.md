@@ -6,6 +6,14 @@ adheres to [Semantic Versioning](https://semver.org/) and the
 
 ## [Unreleased]
 
+## [0.1.6]
+
+### Added
+
+- **`wovo pages`** — archive, unarchive, and move pages via `/api/pages` PATCH:
+  `archive <slug>`, `unarchive <slug>`, `move <slug> --space <name>`.
+- MCP tools: `wovo_pages_archive`, `wovo_pages_unarchive`, `wovo_pages_move`.
+
 ## [0.1.5]
 
 ### Added
