@@ -52,6 +52,7 @@ export function login(cfg) {
       }
       const token = u.searchParams.get("token");
       const gotState = u.searchParams.get("state");
+      const workspace = u.searchParams.get("workspace") || "";
       if (!token || gotState !== state) {
         res.writeHead(400, { "content-type": "text/html" });
         res.end("<h1>Invalid sign-in response.</h1><p>Run <code>npx @gowovo/wovo setup</code> again.</p>");
@@ -61,8 +62,8 @@ export function login(cfg) {
       res.end(DONE_PAGE);
       clearTimeout(timer);
       server.close();
-      writeCreds({ url: cfg.url, token })
-        .then(() => resolve({ token, url: cfg.url }))
+      writeCreds({ url: cfg.url, token, ...(workspace ? { workspace } : {}) })
+        .then(() => resolve({ token, url: cfg.url, workspace }))
         .catch(reject);
     });
 

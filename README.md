@@ -31,13 +31,24 @@ export WOVO_WORKSPACE="my-workspace"
 ## CLI
 
 ```bash
+wovo setup               # connect your AI tool: browser sign-in + skill + MCP + test deploy
+                         #   --scope project|user        this project, or every project on this machine
+                         #   --behavior auto|ask|manual  publish automatically, offer first, or only on request
 wovo deploy <file|dir>   # deploy one .html, or every .html under a folder
 wovo list                # list pages in the workspace
+wovo pages archive <slug>          # hide a page from the library (link still works)
+wovo pages unarchive <slug>        # restore an archived page
+wovo pages move <slug> --space S   # change a page's space
+wovo pages rename <slug> <new>     # change a page's path; old links redirect
+wovo domains list                  # custom domains
+wovo domains add <d> --page <slug> # link a domain (prints DNS records)
+wovo domains status <d>            # re-check DNS / verification
+wovo domains remove <d>            # unlink a domain
 ```
 
 | Flag | Default | What it does |
 |------|---------|--------------|
-| `--workspace W` | env `WOVO_WORKSPACE` or `default` | Target workspace |
+| `--workspace W` | env `WOVO_WORKSPACE`, else resolved from the token | Target workspace |
 | `--space S` | top folder name | Group pages under a space |
 | `--tool T` | `cli` | Source-tool tag |
 | `--slug S` | derived from path | Explicit slug (single-file deploys) |
@@ -70,7 +81,9 @@ claude mcp add wovo \
   -- npx -y -p @gowovo/wovo wovo-mcp
 ```
 
-Tools: `wovo_deploy` (inline `html` or a file `path`) and `wovo_list`.
+Tools: `wovo_deploy` (inline `html` or a file `path`), `wovo_list`, `wovo_pages_archive`,
+`wovo_pages_unarchive`, `wovo_pages_move`, `wovo_pages_rename`, `wovo_domains_list`,
+`wovo_domains_add`, `wovo_domains_remove`, `wovo_domains_status`.
 
 ## Requirements
 

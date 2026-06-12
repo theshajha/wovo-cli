@@ -18,36 +18,58 @@ const C = {
 };
 
 // The durable behavior the agent follows from now on. Kept in sync with the
-// product's canonical instruction copy.
-const WOVO_INSTRUCTION = `When you finish a self-contained, human-facing HTML artifact the user would want to view or keep — a report, dashboard, slide deck, mockup, document, or landing page — publish it to the user's Wovo library as the natural last step, and give back the live link.
+// product's canonical instruction copy. Three publish behaviors:
+//   auto   — publish finished HTML privately without being asked (default)
+//   ask    — offer first, publish on a yes
+//   manual — only when the user explicitly asks
+const PUBLISH_LINE = {
+  auto: `publish it to the user's Wovo library as the natural last step, and give back the live link. Publishing is part of the work — the user shouldn't have to ask.`,
+  ask: `offer to publish it to the user's Wovo library ("Want me to publish this so you have a live link?") and publish when they say yes.`,
+  manual: `the user's Wovo library is where it can live — but only publish when the user explicitly asks you to (e.g. "publish this", "deploy to Wovo").`,
+};
+
+function wovoInstruction(behavior) {
+  const line = PUBLISH_LINE[behavior] || PUBLISH_LINE.auto;
+  return `When you finish a self-contained, human-facing HTML artifact the user would want to view or keep — a report, dashboard, slide deck, mockup, document, or landing page — ${line}
 
 - Deploy it as a PRIVATE page (only the user can view it): use the \`wovo_deploy\` tool with \`access: "private"\`. If the Wovo MCP tools aren't available, run \`npx @gowovo/wovo deploy <file> --access private\` instead.
 - Give it a clear title and a sensible space (e.g. "reports", "dashboards").
 - Reply with the returned live link, and note it's private — offer to make it public/shareable if they ask.
 
-Do NOT publish: source code or components, partial/incomplete HTML, throwaway or test files, or anything the user explicitly didn't ask to keep. When unsure whether something is worth keeping, deploy it private (safe) and mention the link.
+Do NOT publish: source code or components, partial/incomplete HTML, throwaway or test files, or anything the user explicitly didn't ask to keep.`;
+}
 
-Publishing is part of the work — the user shouldn't have to ask.`;
+const SKILL_DESCRIPTION = {
+  auto: "Use when you finish a self-contained, shareable HTML artifact (report, dashboard, deck, mockup, doc, landing page) — publish it to the user's Wovo library as a private page and return the live link.",
+  ask: "Use when you finish a self-contained, shareable HTML artifact (report, dashboard, deck, mockup, doc, landing page) — offer to publish it to the user's Wovo library, and do so when they accept.",
+  manual: "Use when the user asks to publish, deploy, or share an HTML artifact — send it to their Wovo library as a private page and return the live link.",
+};
 
-const skillFile = `---
+function skillFile(behavior) {
+  return `---
 name: wovo
-description: Use when you finish a self-contained, shareable HTML artifact (report, dashboard, deck, mockup, doc, landing page) — publish it to the user's Wovo library as a private page and return the live link.
+description: ${SKILL_DESCRIPTION[behavior] || SKILL_DESCRIPTION.auto}
 ---
 
 # Publishing to Wovo
 
-${WOVO_INSTRUCTION}
+${wovoInstruction(behavior)}
 `;
+}
 
-const cursorRuleFile = `---
+function cursorRuleFile(behavior) {
+  return `---
 description: Publish finished HTML artifacts to the user's Wovo library
 alwaysApply: true
 ---
 
-${WOVO_INSTRUCTION}
+${wovoInstruction(behavior)}
 `;
+}
 
-const agentsMdSection = `\n## Publishing to Wovo\n\n${WOVO_INSTRUCTION}\n`;
+function agentsMdSection(behavior) {
+  return `\n## Publishing to Wovo\n\n${wovoInstruction(behavior)}\n`;
+}
 
 const WELCOME_HTML = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Wovo is connected</title><style>body{margin:0;height:100vh;display:grid;place-items:center;background:#f6f3ee;color:#1c1a17;font-family:ui-sans-serif,system-ui,sans-serif}.c{text-align:center}.m{font-size:40px}h1{font-weight:600;letter-spacing:-.02em}p{color:#57514a}</style></head><body><div class="c"><div class="m">≋ ✅</div><h1>Wovo is connected</h1><p>Your agent will publish what it builds here — automatically.</p></div></body></html>`;
 
@@ -91,14 +113,14 @@ async function ensureGitignored(...entries) {
   if (missing.length) await appendFile(gi, (current && !current.endsWith("\n") ? "\n" : "") + missing.join("\n") + "\n");
 }
 
-async function appendAgentsSection() {
+async function appendAgentsSection(behavior) {
   const file = "AGENTS.md";
   if (existsSync(file)) {
     const existing = await readFile(file, "utf8");
     if (existing.includes("## Publishing to Wovo")) return; // idempotent
-    await appendFile(file, (existing.endsWith("\n") ? "" : "\n") + agentsMdSection);
+    await appendFile(file, (existing.endsWith("\n") ? "" : "\n") + agentsMdSection(behavior));
   } else {
-    await writeFile(file, `# Agent instructions\n${agentsMdSection}`, "utf8");
+    await writeFile(file, `# Agent instructions\n${agentsMdSection(behavior)}`, "utf8");
   }
 }
 
@@ -126,47 +148,63 @@ export async function cmdSetup(cfg, flags) {
   // CI/headless escape hatch.
   if (!cfg.token) {
     try {
-      const { token, url } = await login(cfg);
+      const { token, url, workspace } = await login(cfg);
       cfg.token = token;
       cfg.url = (url || cfg.url).replace(/\/$/, "");
+      if (workspace) cfg.workspace = workspace;
     } catch (e) {
       console.error(C.red(`✗ ${e.message}`));
       process.exit(1);
     }
   }
   const tool = flags.tool || detectTool();
+  // --scope project (default) writes into the current repo; --scope user writes
+  // to the home directory so every project on this machine inherits the setup.
+  const scope = flags.scope === "user" ? "user" : "project";
+  const behavior = ["auto", "ask", "manual"].includes(flags.behavior) ? flags.behavior : "auto";
+  const home = process.env.HOME || process.env.USERPROFILE || "";
   const did = [];
 
   if (tool === "claude-code") {
-    await writeEnsuring(".claude/skills/wovo/SKILL.md", skillFile);
-    did.push(".claude/skills/wovo/SKILL.md");
+    const skillPath =
+      scope === "user" ? path.join(home, ".claude", "skills", "wovo", "SKILL.md") : ".claude/skills/wovo/SKILL.md";
+    await writeEnsuring(skillPath, skillFile(behavior));
+    did.push(skillPath);
     // Prefer `claude mcp add` (token lands in Claude's config, not your repo).
-    let added = false;
     try {
+      const scopeFlag = scope === "user" ? " -s user" : "";
       execSync(
-        `claude mcp add wovo --env WOVO_TOKEN=${cfg.token} --env WOVO_WORKSPACE=${cfg.workspace} -- npx -y -p @gowovo/wovo wovo-mcp`,
+        `claude mcp add wovo${scopeFlag} --env WOVO_TOKEN=${cfg.token} --env WOVO_WORKSPACE=${cfg.workspace} -- npx -y -p @gowovo/wovo wovo-mcp`,
         { stdio: "ignore" }
       );
-      added = true;
-      did.push("registered the Wovo MCP server with Claude Code");
+      did.push(`registered the Wovo MCP server with Claude Code${scope === "user" ? " (all projects)" : ""}`);
     } catch {
       await mergeMcpJson(".mcp.json", cfg.token, cfg.workspace);
       await ensureGitignored(".mcp.json");
       did.push(".mcp.json (Wovo MCP server — gitignored, contains your token)");
     }
   } else if (tool === "cursor") {
-    await writeEnsuring(".cursor/rules/wovo.mdc", cursorRuleFile);
-    await mergeMcpJson(".cursor/mcp.json", cfg.token, cfg.workspace);
-    await ensureGitignored(".cursor/mcp.json");
-    did.push(".cursor/rules/wovo.mdc", ".cursor/mcp.json (gitignored, contains your token)");
+    if (scope === "user") {
+      // Cursor's MCP config is global at ~/.cursor/mcp.json; rules stay
+      // per-project, so drop the rule here too when we're inside a project.
+      await mergeMcpJson(path.join(home, ".cursor", "mcp.json"), cfg.token, cfg.workspace);
+      did.push("~/.cursor/mcp.json (Wovo MCP server — all projects)");
+      await writeEnsuring(".cursor/rules/wovo.mdc", cursorRuleFile(behavior));
+      did.push(".cursor/rules/wovo.mdc (Cursor rules are per-project — re-run in other projects)");
+    } else {
+      await writeEnsuring(".cursor/rules/wovo.mdc", cursorRuleFile(behavior));
+      await mergeMcpJson(".cursor/mcp.json", cfg.token, cfg.workspace);
+      await ensureGitignored(".cursor/mcp.json");
+      did.push(".cursor/rules/wovo.mdc", ".cursor/mcp.json (gitignored, contains your token)");
+    }
   } else {
-    await appendAgentsSection();
+    await appendAgentsSection(behavior);
     await writeEnsuring("wovo.json", JSON.stringify({ url: cfg.url, token: cfg.token, workspace: cfg.workspace }, null, 2) + "\n");
     await ensureGitignored("wovo.json");
     did.push("AGENTS.md (Publishing to Wovo)", "wovo.json (gitignored, contains your token)");
   }
 
-  console.log(C.dim(`Connecting Wovo for ${C.bold(tool)} in ${process.cwd()}…\n`));
+  console.log(C.dim(`Connecting Wovo for ${C.bold(tool)} (${scope} scope, ${behavior} publishing) in ${process.cwd()}…\n`));
   for (const d of did) console.log(`  ${C.green("✓")} ${d}`);
 
   let url = "";
@@ -186,5 +224,7 @@ export async function cmdSetup(cfg, flags) {
 }
 
 export function setupHelp() {
-  return `  wovo setup               Connect this project's AI tool to Wovo (skill + token + test deploy)`;
+  return `  wovo setup               Connect your AI tool to Wovo (skill + token + test deploy)
+    --scope project|user        this project only, or every project on this machine
+    --behavior auto|ask|manual  publish automatically (default), offer first, or only on request`;
 }

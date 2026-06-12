@@ -169,6 +169,35 @@ server.tool(
 );
 
 server.tool(
+  "wovo_pages_rename",
+  "Change a page's path (slug). Old links 308-redirect to the new path; any custom domain pointing at the page follows automatically.",
+  {
+    slug: z.string().describe("Current page slug."),
+    newSlug: z.string().describe("New slug (lowercased/slugified server-side)."),
+    workspace: z.string().optional().describe("Workspace (defaults to WOVO_WORKSPACE)."),
+  },
+  async (args) => {
+    if (!TOKEN) return errText("WOVO_TOKEN is not set on the MCP server environment.");
+    const ws = args.workspace || DEFAULT_WS;
+    const res = await fetch(`${URL_BASE}/api/pages`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", authorization: `Bearer ${TOKEN}` },
+      body: JSON.stringify({ workspace: ws, slug: args.slug, action: "rename", newSlug: args.newSlug }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) return errText(data.error || `HTTP ${res.status}`);
+    return {
+      content: [
+        {
+          type: "text",
+          text: `✓ Moved "${args.slug}" → "${data.page.slug}". Old links redirect. Live at ${URL_BASE}/p/${ws}/${data.page.slug}`,
+        },
+      ],
+    };
+  }
+);
+
+server.tool(
   "wovo_domains_list",
   "List custom domains linked to the Wovo workspace.",
   { workspace: z.string().optional().describe("Workspace (defaults to WOVO_WORKSPACE).") },

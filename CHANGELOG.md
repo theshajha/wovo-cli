@@ -6,6 +6,23 @@ adheres to [Semantic Versioning](https://semver.org/) and the
 
 ## [Unreleased]
 
+## [0.1.7]
+
+### Added
+
+- **`wovo pages rename <slug> <new>`** — change a page's path; old links
+  308-redirect and linked custom domains follow. MCP tool: `wovo_pages_rename`.
+- **`wovo setup --scope project|user`** — install for this project only
+  (default) or for every project on this machine (user-level skill + MCP).
+- **`wovo setup --behavior auto|ask|manual`** — choose how the agent publishes
+  finished HTML: automatically (default), offer first, or only when asked.
+
+### Fixed
+
+- Browser sign-in now stores the workspace slug, and every command falls back
+  to the token's own workspace server-side — `wovo list` / `pages` / `domains`
+  no longer target a workspace literally named "default" after `wovo setup`.
+
 ## [0.1.6]
 
 ### Added
