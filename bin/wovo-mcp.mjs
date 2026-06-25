@@ -67,8 +67,7 @@ server.tool(
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) return errText(failureMessage(res, data));
     const level = args.access || "private";
-    // Lead with the link and tell the agent to surface it — the user's #1
-    // complaint is the live URL getting buried in a wall of agent output.
+    // Lead with the link + tell the agent to surface it, so it isn't buried.
     return {
       content: [
         {
@@ -312,8 +311,7 @@ server.tool(
   }
 );
 
-// Every API call gets a hard timeout (a dead connection must never hang the MCP
-// server and block the agent) and one retry on a transient failure.
+// Hard timeout + one retry so a dead connection can't hang the agent.
 async function apiFetch(url, init = {}, { timeoutMs = 30_000, retries = 1 } = {}) {
   for (let attempt = 0; ; attempt++) {
     const ctrl = new AbortController();
@@ -339,7 +337,6 @@ async function apiFetch(url, init = {}, { timeoutMs = 30_000, retries = 1 } = {}
   }
 }
 
-// Make an API failure actionable for the agent (so it can tell the user what to do).
 function failureMessage(res, data) {
   const base = data.error || `HTTP ${res.status}`;
   if (res.status === 401 || res.status === 403) return `${base} — the deploy token is missing or invalid; ask the user to run \`wovo setup\`.`;

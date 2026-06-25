@@ -69,17 +69,13 @@ function loadConfig(flags) {
   return cfg;
 }
 
-// One place for every network call: a hard timeout (so a dead connection never
-// hangs the CLI forever) and one retry on a transient failure (network blip /
-// 5xx / timeout). Deploy, list, domains, and pages all route through here.
+// Hard timeout + one retry on a transient failure (timeout / network blip / 5xx).
 async function apiFetch(url, init = {}, { timeoutMs = 30_000, retries = 1 } = {}) {
   for (let attempt = 0; ; attempt++) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
       const res = await fetch(url, { ...init, signal: ctrl.signal });
-      // Retry once on a 5xx (the server may just be cold); 4xx is the caller's
-      // problem and surfaces immediately.
       if (res.status >= 500 && attempt < retries) {
         await new Promise((r) => setTimeout(r, 600));
         continue;
@@ -99,7 +95,6 @@ async function apiFetch(url, init = {}, { timeoutMs = 30_000, retries = 1 } = {}
   }
 }
 
-// Turn an API failure into something the user can act on, not a bare status code.
 function failureMessage(res, data) {
   const base = data.error || `HTTP ${res.status}`;
   if (res.status === 401 || res.status === 403) return `${base} — run \`wovo setup\` to reconnect.`;
@@ -150,8 +145,7 @@ function wsQuery(cfg) {
 async function deployOne(cfg, file, flags) {
   const html = await readFile(file.abs, "utf8");
   const { slug, space } = deriveMeta(file.abs, file.base, cfg, flags);
-  // Private by default — your library is private; sharing is a deliberate
-  // `--access public`. Matches the MCP/agent default so both paths behave alike.
+  // Private by default (matches the MCP); share with `--access public`.
   const level = flags.access || "private";
   const body = { ...wsBody(cfg), slug, space, sourceTool: cfg.tool, html, access: { level } };
   const res = await apiFetch(`${cfg.url}/api/deploy`, {
@@ -210,8 +204,7 @@ async function cmdDeploy(target, cfg, flags) {
   );
 }
 
-// The deploy "receipt" — the live link on its own line, impossible to miss in a
-// wall of agent output. Used for single-page deploys and every watch save.
+// Deploy receipt: the live link on its own line so it can't get lost in agent output.
 function printReceipt(cfg, r, { prefix = "" } = {}) {
   const url = `${cfg.url}/p/${r.workspace}/${r.slug}`;
   const meta = [`v${r.version}`, r.access].filter(Boolean).join(" · ");
@@ -220,9 +213,7 @@ function printReceipt(cfg, r, { prefix = "" } = {}) {
   console.log(`${prefix}     ${C.dim("Library:")} ${C.accent(`${cfg.url}/w/${r.workspace}`)}`);
 }
 
-// `wovo watch <file|dir>` — auto-publish on every save. The deterministic sync
-// path: no agent has to remember to deploy, so an exported design lands the
-// instant it's written. Saves are private unless `--access` says otherwise.
+// `wovo watch <file|dir>` — auto-publish on every save (private unless --access).
 async function cmdWatch(target, cfg, flags) {
   if (!cfg.token) {
     console.error(C.red("✗ No deploy token. Run `wovo setup` first."));
@@ -242,14 +233,17 @@ async function cmdWatch(target, cfg, flags) {
     console.error(C.red(`✗ ${path.basename(absTarget)} isn't an HTML file.`));
     process.exit(1);
   }
-  // Watch the parent dir even for a single file: editors and export tools save
-  // atomically (write a temp file, then rename), which breaks a watch bound to
-  // the file's own inode. We filter events down to the file we care about.
+  // Watch the parent dir even for one file — atomic saves (write temp, rename)
+  // break a watch bound to the file's inode; events are filtered to it below.
   const watchDir = isDir ? absTarget : path.dirname(absTarget);
   const onlyFile = isDir ? null : path.basename(absTarget);
   const watchFlags = { ...flags, access: flags.access || "private" };
+  // Quiet period before syncing, so we publish the settled edit not a mid-burst one.
+  const debounceMs = Math.max(1, Number(flags.debounce) || 3) * 1000;
+  // Cap so a file rewritten nonstop still syncs (debounce alone could defer forever).
+  const maxWaitMs = Math.max(debounceMs * 6, 30_000);
   const ts = () => new Date().toTimeString().slice(0, 8);
-  const pending = new Map();
+  const pending = new Map(); // abs -> { timer, firstAt }
 
   const deployChanged = async (abs) => {
     try {
@@ -268,33 +262,44 @@ async function cmdWatch(target, cfg, flags) {
     if (bn.startsWith(".") || !/\.html?$/i.test(bn)) return; // skip temp/dotfiles
     const abs = path.isAbsolute(name) ? name : path.join(watchDir, name);
     if (!existsSync(abs)) return; // a delete/rename-away event — nothing to deploy
-    clearTimeout(pending.get(abs)); // debounce a burst of writes into one deploy
-    // ~1s window: coalesces an editor/export tool's multi-write save into one
-    // deploy, and keeps frequent saves from burning the per-token deploy rate
-    // limit (each deploy is a new version). A 429 still surfaces as an actionable
-    // line and the watch keeps running.
-    pending.set(abs, setTimeout(() => { pending.delete(abs); deployChanged(abs); }, 800));
+    // Trailing debounce, capped by maxWait so nonstop writes still sync.
+    const prev = pending.get(abs);
+    const firstAt = prev ? prev.firstAt : Date.now();
+    if (prev) clearTimeout(prev.timer);
+    const wait = Math.min(debounceMs, Math.max(0, maxWaitMs - (Date.now() - firstAt)));
+    const timer = setTimeout(() => { pending.delete(abs); deployChanged(abs); }, wait);
+    pending.set(abs, { timer, firstAt });
   };
 
   let watcher;
   try {
     watcher = fsWatch(watchDir, { recursive: isDir }, onChange);
   } catch {
-    // Recursive watch isn't supported on every OS/Node; fall back to a flat watch
-    // (top-level saves still sync — note nested folders need Node 20+ on Linux).
+    // Recursive watch isn't universal (older Linux/Node) — fall back to flat.
     watcher = fsWatch(watchDir, onChange);
   }
-  // A dead watcher must never fail silently — that looks identical to "nothing
-  // changed". Surface the error and exit so the user knows to restart it.
+  // Surface a dead watcher instead of failing silently (looks like "nothing changed").
   watcher.on("error", (err) => {
     console.error(C.red(`\n✗ Watch stopped: ${err.message}. Re-run \`wovo watch ${target}\`.`));
     process.exit(1);
   });
 
-  console.log(`${C.bold("Watching")} ${C.accent(target)} ${C.dim("— saves auto-publish (private). Ctrl+C to stop.")}`);
-  process.on("SIGINT", () => {
+  console.log(
+    `${C.bold("Watching")} ${C.accent(target)} ` +
+      C.dim(`— saves auto-publish (private) ${debounceMs / 1000}s after edits settle. Ctrl+C to stop.`)
+  );
+  process.on("SIGINT", async () => {
     watcher.close();
-    console.log(C.dim("\nStopped watching."));
+    // Flush any settle-pending edit so Ctrl+C never drops the last save.
+    const abses = [...pending.keys()];
+    for (const p of pending.values()) clearTimeout(p.timer);
+    pending.clear();
+    if (abses.length) {
+      console.log(C.dim(`\nFinishing ${abses.length} pending sync${abses.length === 1 ? "" : "s"}…`));
+      await Promise.all(abses.map(deployChanged));
+    } else {
+      console.log(C.dim("\nStopped watching."));
+    }
     process.exit(0);
   });
   await new Promise(() => {}); // keep the process alive until interrupted
@@ -518,6 +523,7 @@ ${C.bold("Options")}
   --slug S                 Explicit slug (single-file deploys)
   --page S                 Target page slug (domains add)
   --access LEVEL           private | team | public | password (default: private)
+  --debounce S             watch: seconds a file must be quiet before syncing (default: 3)
   --url U                  Wovo base URL (default: env WOVO_URL or https://wovo.dev)
   --token T                Deploy token (default: env WOVO_TOKEN)
 
