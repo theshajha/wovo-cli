@@ -269,7 +269,11 @@ async function cmdWatch(target, cfg, flags) {
     const abs = path.isAbsolute(name) ? name : path.join(watchDir, name);
     if (!existsSync(abs)) return; // a delete/rename-away event — nothing to deploy
     clearTimeout(pending.get(abs)); // debounce a burst of writes into one deploy
-    pending.set(abs, setTimeout(() => { pending.delete(abs); deployChanged(abs); }, 300));
+    // ~1s window: coalesces an editor/export tool's multi-write save into one
+    // deploy, and keeps frequent saves from burning the per-token deploy rate
+    // limit (each deploy is a new version). A 429 still surfaces as an actionable
+    // line and the watch keeps running.
+    pending.set(abs, setTimeout(() => { pending.delete(abs); deployChanged(abs); }, 800));
   };
 
   let watcher;
@@ -280,10 +284,16 @@ async function cmdWatch(target, cfg, flags) {
     // (top-level saves still sync — note nested folders need Node 20+ on Linux).
     watcher = fsWatch(watchDir, onChange);
   }
+  // A dead watcher must never fail silently — that looks identical to "nothing
+  // changed". Surface the error and exit so the user knows to restart it.
+  watcher.on("error", (err) => {
+    console.error(C.red(`\n✗ Watch stopped: ${err.message}. Re-run \`wovo watch ${target}\`.`));
+    process.exit(1);
+  });
 
   console.log(`${C.bold("Watching")} ${C.accent(target)} ${C.dim("— saves auto-publish (private). Ctrl+C to stop.")}`);
   process.on("SIGINT", () => {
-    watcher?.close();
+    watcher.close();
     console.log(C.dim("\nStopped watching."));
     process.exit(0);
   });
