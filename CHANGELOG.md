@@ -6,12 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/) and the
 
 ## [Unreleased]
 
+## [0.2.0]
+
 ### Added
 
 - **`wovo watch <file|dir>`** — auto-publish on every save. The deterministic
-  sync path: an exported design (e.g. from Pencil) lands the instant it's
-  written, so nothing depends on an agent remembering to deploy. Debounced,
-  survives atomic saves, private by default.
+  sync path: an exported design (e.g. from Pencil) lands once it's written, so
+  nothing depends on an agent remembering to deploy. Private by default, survives
+  atomic saves, with a configurable settle window (`--debounce`, default 3s), a
+  maxWait cap, and flush-on-exit so the last save is never dropped.
 - **Non-HTML guard** — `wovo deploy not-a-page.json` now fails fast with a clear
   message instead of uploading a non-HTML file.
 
@@ -125,5 +128,6 @@ Initial public release of the `wovo` CLI + MCP server.
 - `wovo-mcp` — MCP server exposing `wovo_deploy` and `wovo_list` tools for AI
   agents (Claude Code and any MCP client).
 
-[Unreleased]: https://github.com/theshajha/wovo-cli/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/theshajha/wovo-cli/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/theshajha/wovo-cli/compare/v0.1.7...v0.2.0
 [0.1.0]: https://github.com/theshajha/wovo-cli/releases/tag/v0.1.0
