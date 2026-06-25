@@ -6,6 +6,36 @@ adheres to [Semantic Versioning](https://semver.org/) and the
 
 ## [Unreleased]
 
+### Added
+
+- **`wovo watch <file|dir>`** — auto-publish on every save. The deterministic
+  sync path: an exported design (e.g. from Pencil) lands the instant it's
+  written, so nothing depends on an agent remembering to deploy. Debounced,
+  survives atomic saves, private by default.
+- **Non-HTML guard** — `wovo deploy not-a-page.json` now fails fast with a clear
+  message instead of uploading a non-HTML file.
+
+### Changed
+
+- **Deploy defaults to `private`** (was public-by-link), matching the MCP/agent
+  default so both paths behave identically. Add `--access public` to publish a
+  shareable link. *(Behavior change — review scripts that relied on public deploys.)*
+- **Unmissable live link.** Single-page deploys and every `watch` save print a
+  receipt with the live link on its own line; the MCP `wovo_deploy` result leads
+  with the link and tells the agent to end its reply with it — so it never gets
+  lost in a wall of output.
+- **Skill trigger tightened** so agents reliably recognize a finished HTML page
+  as publishable, instruct ending the reply with the link, point heavy savers to
+  `wovo watch`, and recover from auth errors (`wovo setup`). Setup's welcome page
+  and the CLI mark now use the current `w.` brand.
+
+### Fixed
+
+- **Network resilience** — every API call now has a 30s timeout and one retry on
+  transient failures, so a flaky connection no longer hangs the CLI/MCP forever.
+- **Actionable errors** — 401/403 tell you to run `wovo setup`; 429 explains the
+  rate limit, instead of a bare HTTP status.
+
 ## [0.1.7]
 
 ### Added

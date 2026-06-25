@@ -51,7 +51,7 @@ server.tool(
     }
     if (!html) return errText("Provide either `html` or `path`.");
 
-    const res = await fetch(`${URL_BASE}/api/deploy`, {
+    const res = await apiFetch(`${URL_BASE}/api/deploy`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${TOKEN}` },
       body: JSON.stringify({
@@ -65,14 +65,19 @@ server.tool(
       }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.ok) return errText(data.error || `HTTP ${res.status}`);
+    if (!res.ok || !data.ok) return errText(failureMessage(res, data));
+    const level = args.access || "private";
+    // Lead with the link and tell the agent to surface it — the user's #1
+    // complaint is the live URL getting buried in a wall of agent output.
     return {
       content: [
         {
           type: "text",
           text:
-            `✓ Deployed "${data.slug}" (v${data.version}) to workspace "${data.workspace}".\n` +
-            `Live URL: ${data.url}\nRaw HTML: ${data.rawUrl}\nLibrary: ${URL_BASE}/w/${data.workspace}`,
+            `${data.url}\n\n` +
+            `✓ Published "${data.slug}" (v${data.version}, ${level}) to "${data.workspace}".\n` +
+            `Raw: ${data.rawUrl}  ·  Library: ${URL_BASE}/w/${data.workspace}\n\n` +
+            `End your reply to the user with this link on its own line so they can open it:\n${data.url}`,
         },
       ],
     };
@@ -88,11 +93,11 @@ server.tool(
     // The token authenticates the listing: the workspace's own token sees every
     // page; without it the API returns only the anonymous view (and 403s
     // private workspaces).
-    const res = await fetch(`${URL_BASE}/api/pages?workspace=${encodeURIComponent(ws)}`, {
+    const res = await apiFetch(`${URL_BASE}/api/pages?workspace=${encodeURIComponent(ws)}`, {
       headers: TOKEN ? { authorization: `Bearer ${TOKEN}` } : {},
     });
     const data = await res.json().catch(() => ({}));
-    if (!data.ok) return errText(data.error || `HTTP ${res.status}`);
+    if (!res.ok || !data.ok) return errText(failureMessage(res, data));
     const lines = data.pages
       .map((p) => `• ${p.slug} (${p.space}, v${p.currentVersion}) — ${p.title}\n  ${URL_BASE}/p/${ws}/${p.slug}`)
       .join("\n");
@@ -112,13 +117,13 @@ server.tool(
   async (args) => {
     if (!TOKEN) return errText("WOVO_TOKEN is not set on the MCP server environment.");
     const ws = args.workspace || DEFAULT_WS;
-    const res = await fetch(`${URL_BASE}/api/pages`, {
+    const res = await apiFetch(`${URL_BASE}/api/pages`, {
       method: "PATCH",
       headers: { "content-type": "application/json", authorization: `Bearer ${TOKEN}` },
       body: JSON.stringify({ workspace: ws, slug: args.slug, action: "archive" }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.ok) return errText(data.error || `HTTP ${res.status}`);
+    if (!res.ok || !data.ok) return errText(failureMessage(res, data));
     return { content: [{ type: "text", text: `✓ Archived "${args.slug}" in "${ws}".` }] };
   }
 );
@@ -133,13 +138,13 @@ server.tool(
   async (args) => {
     if (!TOKEN) return errText("WOVO_TOKEN is not set on the MCP server environment.");
     const ws = args.workspace || DEFAULT_WS;
-    const res = await fetch(`${URL_BASE}/api/pages`, {
+    const res = await apiFetch(`${URL_BASE}/api/pages`, {
       method: "PATCH",
       headers: { "content-type": "application/json", authorization: `Bearer ${TOKEN}` },
       body: JSON.stringify({ workspace: ws, slug: args.slug, action: "unarchive" }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.ok) return errText(data.error || `HTTP ${res.status}`);
+    if (!res.ok || !data.ok) return errText(failureMessage(res, data));
     return { content: [{ type: "text", text: `✓ Unarchived "${args.slug}" in "${ws}".` }] };
   }
 );
@@ -155,13 +160,13 @@ server.tool(
   async (args) => {
     if (!TOKEN) return errText("WOVO_TOKEN is not set on the MCP server environment.");
     const ws = args.workspace || DEFAULT_WS;
-    const res = await fetch(`${URL_BASE}/api/pages`, {
+    const res = await apiFetch(`${URL_BASE}/api/pages`, {
       method: "PATCH",
       headers: { "content-type": "application/json", authorization: `Bearer ${TOKEN}` },
       body: JSON.stringify({ workspace: ws, slug: args.slug, action: "move", space: args.space }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.ok) return errText(data.error || `HTTP ${res.status}`);
+    if (!res.ok || !data.ok) return errText(failureMessage(res, data));
     return {
       content: [{ type: "text", text: `✓ Moved "${args.slug}" to space "${data.page.space}" in "${ws}".` }],
     };
@@ -179,13 +184,13 @@ server.tool(
   async (args) => {
     if (!TOKEN) return errText("WOVO_TOKEN is not set on the MCP server environment.");
     const ws = args.workspace || DEFAULT_WS;
-    const res = await fetch(`${URL_BASE}/api/pages`, {
+    const res = await apiFetch(`${URL_BASE}/api/pages`, {
       method: "PATCH",
       headers: { "content-type": "application/json", authorization: `Bearer ${TOKEN}` },
       body: JSON.stringify({ workspace: ws, slug: args.slug, action: "rename", newSlug: args.newSlug }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.ok) return errText(data.error || `HTTP ${res.status}`);
+    if (!res.ok || !data.ok) return errText(failureMessage(res, data));
     return {
       content: [
         {
@@ -204,11 +209,11 @@ server.tool(
   async (args) => {
     if (!TOKEN) return errText("WOVO_TOKEN is not set on the MCP server environment.");
     const ws = args.workspace || DEFAULT_WS;
-    const res = await fetch(`${URL_BASE}/api/domains?workspace=${encodeURIComponent(ws)}`, {
+    const res = await apiFetch(`${URL_BASE}/api/domains?workspace=${encodeURIComponent(ws)}`, {
       headers: { authorization: `Bearer ${TOKEN}` },
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.ok) return errText(data.error || `HTTP ${res.status}`);
+    if (!res.ok || !data.ok) return errText(failureMessage(res, data));
     const lines = data.domains
       .map((d) => `• ${d.domain} (${d.status}) → ${d.slug}`)
       .join("\n");
@@ -229,13 +234,13 @@ server.tool(
   async (args) => {
     if (!TOKEN) return errText("WOVO_TOKEN is not set on the MCP server environment.");
     const ws = args.workspace || DEFAULT_WS;
-    const res = await fetch(`${URL_BASE}/api/domains`, {
+    const res = await apiFetch(`${URL_BASE}/api/domains`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${TOKEN}` },
       body: JSON.stringify({ workspace: ws, domain: args.domain, slug: args.page }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.ok) return errText(data.error || `HTTP ${res.status}`);
+    if (!res.ok || !data.ok) return errText(failureMessage(res, data));
     const dns = (data.dns || [])
       .map((r) => `${r.type} ${r.name} → ${r.value}`)
       .join("\n");
@@ -266,12 +271,12 @@ server.tool(
   async (args) => {
     if (!TOKEN) return errText("WOVO_TOKEN is not set on the MCP server environment.");
     const ws = args.workspace || DEFAULT_WS;
-    const res = await fetch(
+    const res = await apiFetch(
       `${URL_BASE}/api/domains?workspace=${encodeURIComponent(ws)}&domain=${encodeURIComponent(args.domain)}`,
       { method: "DELETE", headers: { authorization: `Bearer ${TOKEN}` } }
     );
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.ok) return errText(data.error || `HTTP ${res.status}`);
+    if (!res.ok || !data.ok) return errText(failureMessage(res, data));
     return { content: [{ type: "text", text: `✓ Unlinked ${args.domain}` }] };
   }
 );
@@ -286,13 +291,13 @@ server.tool(
   async (args) => {
     if (!TOKEN) return errText("WOVO_TOKEN is not set on the MCP server environment.");
     const ws = args.workspace || DEFAULT_WS;
-    const res = await fetch(`${URL_BASE}/api/domains/refresh`, {
+    const res = await apiFetch(`${URL_BASE}/api/domains/refresh`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${TOKEN}` },
       body: JSON.stringify({ workspace: ws, domain: args.domain }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.ok) return errText(data.error || `HTTP ${res.status}`);
+    if (!res.ok || !data.ok) return errText(failureMessage(res, data));
     const dns = (data.dns || [])
       .map((r) => `${r.type} ${r.name} → ${r.value}`)
       .join("\n");
@@ -306,6 +311,42 @@ server.tool(
     };
   }
 );
+
+// Every API call gets a hard timeout (a dead connection must never hang the MCP
+// server and block the agent) and one retry on a transient failure.
+async function apiFetch(url, init = {}, { timeoutMs = 30_000, retries = 1 } = {}) {
+  for (let attempt = 0; ; attempt++) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...init, signal: ctrl.signal });
+      if (res.status >= 500 && attempt < retries) {
+        await new Promise((r) => setTimeout(r, 600));
+        continue;
+      }
+      return res;
+    } catch (e) {
+      const transient = e.name === "AbortError" || e.code === "ECONNRESET" || e.code === "ENOTFOUND" || e.code === "ECONNREFUSED";
+      if (transient && attempt < retries) {
+        await new Promise((r) => setTimeout(r, 600));
+        continue;
+      }
+      if (e.name === "AbortError") throw new Error(`timed out after ${timeoutMs / 1000}s`);
+      throw new Error(`network error (${e.code || e.message})`);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+}
+
+// Make an API failure actionable for the agent (so it can tell the user what to do).
+function failureMessage(res, data) {
+  const base = data.error || `HTTP ${res.status}`;
+  if (res.status === 401 || res.status === 403) return `${base} — the deploy token is missing or invalid; ask the user to run \`wovo setup\`.`;
+  if (res.status === 413) return base; // server already explains the size cap
+  if (res.status === 429) return `${base} (rate-limited — wait a moment, then retry).`;
+  return base;
+}
 
 function errText(msg) {
   return { isError: true, content: [{ type: "text", text: `✗ ${msg}` }] };

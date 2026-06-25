@@ -30,19 +30,22 @@ const PUBLISH_LINE = {
 
 function wovoInstruction(behavior) {
   const line = PUBLISH_LINE[behavior] || PUBLISH_LINE.auto;
-  return `When you finish a self-contained, human-facing HTML artifact the user would want to view or keep — a report, dashboard, slide deck, mockup, document, or landing page — ${line}
+  return `When you create or update a self-contained, human-facing HTML page the user would want to view or keep — a report, dashboard, slide deck, mockup, document, landing page, or any .html file you wrote — ${line}
 
-- Deploy it as a PRIVATE page (only the user can view it): use the \`wovo_deploy\` tool with \`access: "private"\`. If the Wovo MCP tools aren't available, run \`npx @gowovo/wovo deploy <file> --access private\` instead.
+- Publish with the \`wovo_deploy\` tool (pass the file \`path\`, or inline \`html\`). If the Wovo MCP tools aren't available, run \`npx @gowovo/wovo deploy <file>\` instead. Pages are PRIVATE by default — only the user can view them.
 - Give it a clear title and a sensible space (e.g. "reports", "dashboards").
-- Reply with the returned live link, and note it's private — offer to make it public/shareable if they ask.
+- End your reply with the live link on its own line so the user can't miss it; note it's private, and offer a shareable public link if they want one.
+- If publishing fails with an auth error, tell the user to run \`wovo setup\` to reconnect.
 
-Do NOT publish: source code or components, partial/incomplete HTML, throwaway or test files, or anything the user explicitly didn't ask to keep.`;
+For files the user saves repeatedly (e.g. design-tool exports), \`npx @gowovo/wovo watch <file|dir>\` auto-publishes on every save — no need to ask each time.
+
+Do NOT publish: source code or app components, partial/incomplete HTML, or throwaway/test scratch files.`;
 }
 
 const SKILL_DESCRIPTION = {
-  auto: "Use when you finish a self-contained, shareable HTML artifact (report, dashboard, deck, mockup, doc, landing page) — publish it to the user's Wovo library as a private page and return the live link.",
-  ask: "Use when you finish a self-contained, shareable HTML artifact (report, dashboard, deck, mockup, doc, landing page) — offer to publish it to the user's Wovo library, and do so when they accept.",
-  manual: "Use when the user asks to publish, deploy, or share an HTML artifact — send it to their Wovo library as a private page and return the live link.",
+  auto: "Use right after you create or update an HTML page or document the user would want to keep (report, dashboard, deck, mockup, doc, landing page, or any .html file you wrote) — publish it to the user's private Wovo library and end your reply with the live link.",
+  ask: "Use right after you create or update a keepable HTML page or document (report, dashboard, deck, mockup, doc, landing page, or any .html file you wrote) — offer to publish it to the user's Wovo library, and do so when they accept.",
+  manual: "Use when the user asks to publish, deploy, share, or 'keep' an HTML page or document — send it to their private Wovo library and end your reply with the live link.",
 };
 
 function skillFile(behavior) {
@@ -71,7 +74,7 @@ function agentsMdSection(behavior) {
   return `\n## Publishing to Wovo\n\n${wovoInstruction(behavior)}\n`;
 }
 
-const WELCOME_HTML = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Wovo is connected</title><style>body{margin:0;height:100vh;display:grid;place-items:center;background:#f6f3ee;color:#1c1a17;font-family:ui-sans-serif,system-ui,sans-serif}.c{text-align:center}.m{font-size:40px}h1{font-weight:600;letter-spacing:-.02em}p{color:#57514a}</style></head><body><div class="c"><div class="m">≋ ✅</div><h1>Wovo is connected</h1><p>Your agent will publish what it builds here — automatically.</p></div></body></html>`;
+const WELCOME_HTML = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Wovo is connected</title><style>body{margin:0;height:100vh;display:grid;place-items:center;background:#f3f4f1;color:#15171c;font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}.c{text-align:center}.tile{display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:14px;background:#15171c;color:#eceef3;font-size:34px;font-weight:600;letter-spacing:-.02em;margin-bottom:22px}.tile .d{color:#7c8af2}h1{font-weight:600;letter-spacing:-.02em;margin:0 0 8px}p{color:#515660;margin:0}</style></head><body><div class="c"><div class="tile">w<span class="d">.</span></div><h1>Wovo is connected</h1><p>Your agent will publish what it builds here — automatically.</p></div></body></html>`;
 
 function mcpServerEntry(token, ws) {
   return {
