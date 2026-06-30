@@ -14,13 +14,16 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { createRequire } from "node:module";
 import { z } from "zod";
+
+const PKG_VERSION = createRequire(import.meta.url)("../package.json").version;
 
 const URL_BASE = (process.env.WOVO_URL || "https://wovo.dev").replace(/\/$/, "");
 const TOKEN = process.env.WOVO_TOKEN || "";
 const DEFAULT_WS = process.env.WOVO_WORKSPACE || "default";
 
-const server = new McpServer({ name: "wovo", version: "0.1.0" });
+const server = new McpServer({ name: "wovo", version: PKG_VERSION });
 
 server.tool(
   "wovo_deploy",

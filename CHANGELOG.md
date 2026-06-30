@@ -6,6 +6,30 @@ adheres to [Semantic Versioning](https://semver.org/) and the
 
 ## [Unreleased]
 
+## [0.2.1]
+
+### Changed
+
+- **`wovo setup` is the headline auth path.** The README now leads with
+  `npx @gowovo/wovo setup` (browser sign-in, no token to copy); the manual deploy
+  token is demoted to a "Manual auth (CI / headless)" subsection. Matches the
+  product's no-token onboarding promise.
+- **Longer browser-login window.** The loopback sign-in timeout is now 5 minutes
+  (was 2): a brand-new user signs up and creates a library before approving, so
+  the browser leg can take minutes — it no longer times out mid-onboarding.
+
+### Fixed
+
+- **Cursor detection in fresh projects.** `wovo setup` now also detects Cursor via
+  `CURSOR_TRACE_ID`, so a project without a `.cursor/` directory yet is configured
+  as Cursor (writes the rule + MCP) instead of silently falling back to the generic
+  `AGENTS.md` path.
+- **Headless setup tells the agent what to do.** When no browser can open, the CLI
+  now prints an explicit directive — "show the user this URL and ask them to open
+  it" — instead of an easily-skipped informational line.
+- **MCP server reports its real version.** `wovo-mcp` now reads its version from
+  `package.json` instead of a hardcoded `0.1.0`.
+
 ## [0.2.0]
 
 ### Added

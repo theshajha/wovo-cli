@@ -19,9 +19,19 @@ npm i -g @gowovo/wovo
 wovo deploy ./report.html
 ```
 
-## Authenticate
+## Connect (recommended)
 
-Grab a **deploy token** from your workspace settings on [wovo.dev](https://wovo.dev), then provide it via env, a config file, or a flag:
+One command — it opens your browser to sign in, then wires up your AI tool. **No token to copy.**
+
+```bash
+npx @gowovo/wovo setup
+```
+
+From then on, just tell your agent "deploy this to Wovo" and the page lands in your library.
+
+### Manual auth (CI / headless)
+
+When there's no browser (CI, a server), provide a **deploy token** from your workspace settings on [wovo.dev](https://wovo.dev) via env, a config file, or `--token`:
 
 ```bash
 export WOVO_TOKEN="wv_…"

@@ -67,10 +67,12 @@ export function login(cfg) {
         .catch(reject);
     });
 
+    // 5 min: a brand-new user signs up + creates a library before authorizing,
+    // so the browser leg can take minutes — don't time out mid-onboarding.
     const timer = setTimeout(() => {
       server.close();
       reject(new Error("Sign-in timed out. Run the command again."));
-    }, 120000);
+    }, 300000);
 
     server.on("error", reject);
     server.listen(0, "127.0.0.1", () => {
@@ -78,7 +80,7 @@ export function login(cfg) {
       const url = `${cfg.url}/cli/connect?port=${port}&state=${state}`;
       console.log("Opening your browser to connect Wovo…");
       const opened = !process.env.WOVO_NO_BROWSER && openBrowser(url);
-      if (!opened) console.log("  Open this URL to continue:\n  " + url + "\n");
+      if (!opened) console.log("  ⚠ Browser didn't open. Show the user this URL and ask them to open it to finish connecting:\n  " + url + "\n");
       else console.log("  (waiting for you to approve — if nothing opened, visit:\n  " + url + " )\n");
     });
   });

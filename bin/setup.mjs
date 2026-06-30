@@ -86,7 +86,8 @@ function mcpServerEntry(token, ws) {
 
 function detectTool() {
   if (existsSync(".claude") || existsSync(path.join(process.env.HOME || "", ".claude.json"))) return "claude-code";
-  if (existsSync(".cursor")) return "cursor";
+  // A fresh Cursor project has no .cursor dir yet; Cursor's terminal/agent sets CURSOR_TRACE_ID.
+  if (existsSync(".cursor") || process.env.CURSOR_TRACE_ID) return "cursor";
   return "other";
 }
 

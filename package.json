@@ -1,6 +1,6 @@
 {
   "name": "@gowovo/wovo",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Deploy any HTML from any AI tool or terminal to a versioned, shareable library \u2014 CLI + MCP server for wovo.dev.",
   "keywords": [
     "wovo",
