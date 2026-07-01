@@ -148,11 +148,16 @@ async function testDeploy(cfg) {
 }
 
 export async function cmdSetup(cfg, flags) {
+  // Attribution ref from an install channel (e.g. the skills.sh listing bakes in
+  // `--source skills-sh`). Sanitized to a short slug so it rides the browser
+  // sign-in URL safely; the server ignores anything not on its allow-list.
+  const source =
+    typeof flags.source === "string" ? flags.source.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 32) : "";
   // No token? Sign in via the browser (no secret to copy). --token stays the
   // CI/headless escape hatch.
   if (!cfg.token) {
     try {
-      const { token, url, workspace } = await login(cfg);
+      const { token, url, workspace } = await login(cfg, source ? { ref: source } : undefined);
       cfg.token = token;
       cfg.url = (url || cfg.url).replace(/\/$/, "");
       if (workspace) cfg.workspace = workspace;

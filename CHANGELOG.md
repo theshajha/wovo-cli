@@ -6,6 +6,17 @@ adheres to [Semantic Versioning](https://semver.org/) and the
 
 ## [Unreleased]
 
+## [0.2.3]
+
+### Added
+
+- **`wovo setup --source <channel>`.** Optional flag that tags where you found
+  Wovo during the browser sign-in, so signups from install channels (e.g. the
+  [skills.sh](https://www.skills.sh) listing) can be attributed to their source.
+  The value rides the sign-in URL as `?ref=`; the server only honors an
+  allow-list, so an arbitrary value is ignored. Purely additive — omitting the
+  flag changes nothing.
+
 ## [0.2.2]
 
 ### Added

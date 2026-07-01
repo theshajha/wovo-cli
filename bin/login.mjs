@@ -39,8 +39,9 @@ function openBrowser(url) {
 
 const DONE_PAGE = `<!doctype html><html><head><meta charset="utf-8"><title>Wovo connected</title><style>body{margin:0;height:100vh;display:grid;place-items:center;background:#f6f3ee;color:#1c1a17;font-family:ui-sans-serif,system-ui,sans-serif;text-align:center}h1{font-weight:600}p{color:#57514a}</style></head><body><div><div style="font-size:40px">≋ ✅</div><h1>Wovo is connected</h1><p>You can close this tab and return to your terminal.</p></div></body></html>`;
 
-/** Run the browser sign-in. Resolves to { token, url } and persists creds. */
-export function login(cfg) {
+/** Run the browser sign-in. Resolves to { token, url } and persists creds.
+ *  `opts.ref` tags the install channel (e.g. skills.sh) for signup attribution. */
+export function login(cfg, { ref } = {}) {
   const state = randomBytes(16).toString("hex");
   return new Promise((resolve, reject) => {
     const server = http.createServer((req, res) => {
@@ -77,7 +78,8 @@ export function login(cfg) {
     server.on("error", reject);
     server.listen(0, "127.0.0.1", () => {
       const port = server.address().port;
-      const url = `${cfg.url}/cli/connect?port=${port}&state=${state}`;
+      const refParam = ref ? `&ref=${encodeURIComponent(ref)}` : "";
+      const url = `${cfg.url}/cli/connect?port=${port}&state=${state}${refParam}`;
       console.log("Opening your browser to connect Wovo…");
       const opened = !process.env.WOVO_NO_BROWSER && openBrowser(url);
       if (!opened) console.log("  ⚠ Browser didn't open. Show the user this URL and ask them to open it to finish connecting:\n  " + url + "\n");
