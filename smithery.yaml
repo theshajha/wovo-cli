@@ -1,0 +1,24 @@
+# Smithery manifest — https://smithery.ai/docs/build/project-config
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    required: [wovoToken]
+    properties:
+      wovoToken:
+        type: string
+        title: Wovo deploy token
+        description: Workspace deploy token (wv_…) from wovo.dev → Settings.
+      wovoWorkspace:
+        type: string
+        title: Workspace slug
+        description: Optional target workspace; the token resolves a default.
+  commandFunction: |-
+    (config) => ({
+      command: 'npx',
+      args: ['-y', '-p', '@gowovo/wovo', 'wovo-mcp'],
+      env: {
+        WOVO_TOKEN: config.wovoToken,
+        ...(config.wovoWorkspace ? { WOVO_WORKSPACE: config.wovoWorkspace } : {})
+      }
+    })
