@@ -1,18 +1,18 @@
 {
-  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.json",
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.theshajha/wovo",
-  "description": "Deploy any HTML from any AI tool to a versioned, shareable library on wovo.dev; manage those pages and custom domains.",
+  "description": "Deploy HTML from any AI tool to a versioned, shareable library on wovo.dev; manage pages.",
   "repository": {
     "url": "https://github.com/theshajha/wovo-cli",
     "source": "github"
   },
-  "version": "0.2.1",
+  "version": "0.2.2",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@gowovo/wovo",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "transport": { "type": "stdio" },
       "runtimeHint": "npx",
       "packageArguments": [

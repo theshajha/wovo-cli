@@ -6,6 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/) and the
 
 ## [Unreleased]
 
+## [0.2.2]
+
+### Added
+
+- **Listed in the official MCP Registry.** Adds the `mcpName`
+  (`io.github.theshajha/wovo`) package field and a `server.json` manifest so the
+  Wovo MCP server is discoverable in the official registry (and via Glama /
+  Smithery). Metadata only — no code changes from 0.2.1.
+
 ## [0.2.1]
 
 ### Changed
